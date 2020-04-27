@@ -135,11 +135,12 @@ def main(_):
     # 2. Play from the command line against the trained agent.
     if FLAGS.should_play:
         # Pretty print state
-        pretty_print_state(env)
+        
 
         player_1 = 0
         while True:
             time_step = env.reset()
+            pretty_print_state(env)
             while not time_step.last():
                 player_id = time_step.observations["current_player"]
                 if player_id == player_1:
@@ -153,10 +154,10 @@ def main(_):
                                        player_1].step(time_step, is_evaluation=True)
 
                     logging.info("Pick action for player %s", player_id)
-                    action = command_line_action(env, time_step)
+                    #action = command_line_action(env, time_step)
 
-                    # action = agent_out.action
-                    # logging.info("Agent action: %s", action)
+                    action = agent_out.action
+                    logging.info("Agent action: %s", action)
                 time_step = env.step([action])
 
             logging.info("Rewards: Player_0 %s | Player_1 %s",
