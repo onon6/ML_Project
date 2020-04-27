@@ -98,8 +98,8 @@ def main(_):
         for step in range(trial_len):
             action = dqn_agent.act(cur_state)
             ts = env.step([action])
-            new_state = ts["observations"]
-            reward = ts["reward"]
+            new_state = ts.observations
+            reward = ts.reward
             done = ts.last()
             return
             # reward = reward if not done else -20
