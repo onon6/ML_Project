@@ -8,6 +8,7 @@ from absl import app
 from absl import flags
 import numpy as np
 import keras
+import random
 from keras.layers import Dense
 from keras.models import Sequential
 from keras.optimizers import Adam
@@ -33,8 +34,7 @@ class DQN:
     def create_model(self):
         model   = Sequential()
         state_shape  = self.env.observation_spec()["info_state"]
-
-        model.add(Dense(24, input_dim=state_shape[0], activation="relu"))
+        model.add(Dense(24, input_dim=(state_shape[0] * 2), activation="relu"))
         model.add(Dense(48, activation="relu"))
         model.add(Dense(24, activation="relu"))
         model.add(Dense(self.env.action_spec()["num_actions"]))
@@ -48,7 +48,9 @@ class DQN:
         if np.random.random() < self.epsilon:
             num_actions = self.env.action_spec()["num_actions"]
             return np.random.randint(0,num_actions-1)
-        return np.argmax(self.model.predict(state)[0])
+        info_state_concat = np.array(state.observations["info_state"][0] + state.observations["info_state"][1])
+        print(".................{}".format(info_state_concat.shape))
+        return np.argmax(self.model.predict(info_state_concat))
 
     def remember(self, state, action, reward, new_state, done):
         self.memory.append([state, action, reward, new_state, done])
@@ -61,13 +63,14 @@ class DQN:
         samples = random.sample(self.memory, batch_size)
         for sample in samples:
             state, action, reward, new_state, done = sample
-            target = self.target_model.predict(state)
+            info_state_concat = np.array(state.observations["info_state"][0] + state.observations["info_state"][1]) 
+            target = self.target_model.predict(info_state_concat)
             if done:
                 target[0][action] = reward
             else:
                 Q_future = max(self.target_model.predict(new_state)[0])
                 target[0][action] = reward + Q_future * self.gamma
-            self.model.fit(state, target, epochs=1, verbose=0)
+            self.model.fit(info_state_concat, target, epochs=1, verbose=0)
 
     def target_train(self):
         weights = self.model.get_weights()
@@ -95,23 +98,26 @@ def main(_):
 
     for trial in range(trials):
         cur_state = env.reset() #reshape
-        for step in range(trial_len):
+
+        while True:
             action = dqn_agent.act(cur_state)
             ts = env.step([action])
-            new_state = ts.observations
-            reward = ts.reward
+            new_state = ts
+            reward = ts.rewards
             done = ts.last()
-            return
+
             # reward = reward if not done else -20
             new_state = new_state #reshape
             dqn_agent.remember(cur_state, action, reward, new_state, done)
             
             dqn_agent.replay()       # internally iterates default (prediction) model
+            
             dqn_agent.target_train() # iterates target model
-
             cur_state = new_state
             if done:
                 break
+            
+            '''
         if step >= 199:
             print("Failed to complete in trial {}".format(trial))
             if step % 10 == 0:
@@ -119,7 +125,7 @@ def main(_):
         else:
             print("Completed in {} trials".format(trial))
             dqn_agent.save_model("success.model")
-            break
+            break'''
 
 
 if __name__ == "__main__":
