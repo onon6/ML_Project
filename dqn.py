@@ -70,7 +70,7 @@ class DQN:
                 info_state_new = np.array(new_state.observations["info_state"][0] + new_state.observations["info_state"][1] + [state.observations["current_player"]])
                 Q_future = max(self.target_model.predict(info_state_new.reshape(1, -1)))
                 target[0][action] = reward[action] + Q_future[action] * self.gamma
-            self.model.fit(info_state_concat.reshape(1, -11), target, epochs=1, verbose=0)
+            self.model.fit(info_state_concat.reshape(1, -1), target, epochs=1, verbose=0)
 
     def target_train(self):
         weights = self.model.get_weights()
@@ -135,7 +135,7 @@ def main(_):
     # updateTargetNetwork = 1000
     dqn_agent = DQN(env=env)
     steps = []
-    trials = 1000
+    trials = 10000
     trial_len = 500
 
     for trial in range(trials):
