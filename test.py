@@ -96,10 +96,14 @@ def main(_):
             replay_buffer_capacity=FLAGS.replay_buffer_capacity,
             batch_size=FLAGS.batch_size) for idx in range(num_players)
     ]
+
+    
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
 
     expl_policies_avg = PolicyGradientPolicies(env, agents)
+
+    print("TEST", (agents[0].q_values))
 
     for ep in range(FLAGS.num_train_episodes):
       if (ep + 1) % FLAGS.eval_every == 0:
@@ -109,6 +113,10 @@ def main(_):
 
         # Shitty metric code
         losses = [agent.loss for agent in agents]
+
+        # tabular_policy = policy.TabularPolicy(game)
+        # print("POL", tabular_policy)
+
         expl = exploitability.exploitability(env.game, expl_policies_avg)
         nash = exploitability.nash_conv(env.game, expl_policies_avg)
         msg = "EP {}: EXPL: {}, NASH: {}, LOSS: {}\n".format(ep + 1, expl, nash, losses)
