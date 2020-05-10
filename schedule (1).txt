@@ -1,0 +1,46 @@
+var x = document.querySelectorAll('td a font');
+var i;
+for (i = 0; i < x.length; i++) {
+  if (x[i].innerHTML.includes('Natural Language Processing')) x[i].color = '#0984e3';
+  else if (x[i].innerHTML.includes('Genetic Algorithms')) x[i].color = '#6c5ce7';
+  else if (x[i].innerHTML.includes('Principles of Machine Learning')) x[i].color = '#d63031';
+  else if (x[i].innerHTML.includes('Comparative Programming Languages')) x[i].color = '#00b894';
+  else if (x[i].innerHTML.includes('Speech Recognition')) x[i].color = '#81ecec';
+  else {
+    x[i].parentNode.parentNode.parentNode.style.display = 'none';
+  }
+}
+
+var lists = document.querySelectorAll('ul');
+var j;
+for (j = 0; j < lists.length; j++) {
+  lists[j].style.display = 'none';
+}
+
+var cursives = document.querySelectorAll('i');
+var k;
+for (k = 0; k < 2; k++) {
+  cursives[k].style.display = 'none';
+}
+
+var spaces = document.querySelectorAll('br');
+var m;
+for (m = 0; m < 2; m++) {
+  spaces[m].style.display = 'none';
+}
+
+var line = document.querySelector('hr[color="black"][size="1"]');
+line.style.display = 'none';
+
+var textNodes = [];
+var topNodes = document.body.childNodes;
+for (var i = 0; i < topNodes.length; i++) {
+  if (topNodes[i].nodeType == 3) {
+    textNodes.push(topNodes[i]);
+  }
+}
+
+var n;
+for (n = 0; n < 8; n++) {
+  textNodes[n].remove();
+}

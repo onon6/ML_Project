@@ -7,6 +7,7 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow.compat.v1 as tf
+import sys
 
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
@@ -34,12 +35,12 @@ flags.DEFINE_integer("replay_buffer_capacity", int(2e5),
                      "Size of the replay buffer.")
 
 
-flags.DEFINE_integer("reservoir_buffer_capacity", int(2e6),
+flags.DEFINE_integer("reservoir_buffer_capacity", int(2e5),
                      "Size of the reservoir buffer.")
 flags.DEFINE_float("anticipatory_param", 0.1,
                    "Prob of using the rl best response as episode policy.")
-flags.DEFINE_float("epsilon_start", 0.06, "")
-flags.DEFINE_float("epsilon_end", 0.001, "")
+flags.DEFINE_float("epsilon_start", 0.1, "")
+flags.DEFINE_float("epsilon_end", 0.0, "")
 
 
 class NFSPPolicies(policy.Policy):
@@ -75,6 +76,7 @@ def runNFSP(hidden_layers_sizes, replay_buffer_capacity, reservoir_buffer_capaci
     # Define data storage arrays
     episodes = []
     exploits = []
+    nashes = []
 
     # Initialize the game
     game = FLAGS.game
@@ -115,11 +117,14 @@ def runNFSP(hidden_layers_sizes, replay_buffer_capacity, reservoir_buffer_capaci
                 losses = [agent.loss for agent in agents]
                 logging.info("Losses: %s", losses)
                 expl = exploitability.exploitability(env.game, expl_policies_avg)
+                nash = exploitability.nash_conv(env.game, expl_policies_avg)
                 logging.info("[%s] Exploitability AVG %s", ep + 1, expl)
+                logging.info("[%s] NASH AVG %s", ep + 1, nash)
                 logging.info("_____________________________________________")
 
                 episodes.append(ep + 1)
                 exploits.append(expl)
+                nashes.append(nash)
 
             time_step = env.reset()
             while not time_step.last():
@@ -131,16 +136,16 @@ def runNFSP(hidden_layers_sizes, replay_buffer_capacity, reservoir_buffer_capaci
             # Episode is over, step all agents with final info state.
             for agent in agents:
                 agent.step(time_step)
-
-    return episodes, exploits
+       
+    return episodes, exploits, nashes
 
 
 # Replay Buffer
 def grid_search_repb(colors):
     i = 0
 
-    for x in [10, 100, 1000, 10000, 100000]:
-        episodes, exploits = runNFSP(
+    for x in [50000, 75000, 100000, 200000, 300000]:
+        episodes, exploits, nashes = runNFSP(
             hidden_layers_sizes = [int(l) for l in FLAGS.hidden_layers_sizes],
             # replay_buffer_capacity = FLAGS.replay_buffer_capacity,
             replay_buffer_capacity = x, 
@@ -169,7 +174,7 @@ def grid_search_hl(colors):
     i = 0
 
     for x in [[8], [16], [32], [64], [128]]:
-        episodes, exploits = runNFSP(
+        episodes, exploits, nashes = runNFSP(
             hidden_layers_sizes = [int(l) for l in x],
             replay_buffer_capacity = FLAGS.replay_buffer_capacity, 
             reservoir_buffer_capacity = FLAGS.reservoir_buffer_capacity, 
@@ -195,8 +200,8 @@ def grid_search_hl(colors):
 def grid_search_resb(colors):
     i = 0
 
-    for x in [10, 100, 1000, 10000, 100000]:
-        episodes, exploits = runNFSP(
+    for x in [50000, 75000, 100000, 200000, 300000]:
+        episodes, exploits, nashes = runNFSP(
             hidden_layers_sizes = [int(l) for l in FLAGS.hidden_layers_sizes],
             replay_buffer_capacity = FLAGS.replay_buffer_capacity, 
             reservoir_buffer_capacity = x, 
@@ -223,8 +228,8 @@ def grid_search_resb(colors):
 def grid_search_ap(colors):
     i = 0
 
-    for x in [0, 0.1, 0.5, 0.9, 1.0]:
-        episodes, exploits = runNFSP(
+    for x in [0.025, 0.05, 0.1, 0.2, 0.3]:
+        episodes, exploits, nashes = runNFSP(
             hidden_layers_sizes = [int(l) for l in FLAGS.hidden_layers_sizes],
             replay_buffer_capacity = FLAGS.replay_buffer_capacity, 
             reservoir_buffer_capacity = FLAGS.reservoir_buffer_capacity, 
@@ -251,8 +256,8 @@ def grid_search_ap(colors):
 def grid_search_es(colors):
     i = 0
 
-    for x in [0.5, 0.1, 0.05, 0.01, 0.001]:
-        episodes, exploits = runNFSP(
+    for x in [0.2, 0.1, 0.05, 0.01, 0.001]:
+        episodes, exploits, nashes = runNFSP(
             hidden_layers_sizes = [int(l) for l in FLAGS.hidden_layers_sizes],
             replay_buffer_capacity = FLAGS.replay_buffer_capacity, 
             reservoir_buffer_capacity = FLAGS.reservoir_buffer_capacity, 
@@ -279,8 +284,8 @@ def grid_search_es(colors):
 def grid_search_ee(colors):
     i = 0
 
-    for x in [0.0001, 0.001, 0.005, 0.01, 0.05]:
-        episodes, exploits = runNFSP(
+    for x in [0]:
+        episodes, exploits, nashes = runNFSP(
             hidden_layers_sizes = [int(l) for l in FLAGS.hidden_layers_sizes],
             replay_buffer_capacity = FLAGS.replay_buffer_capacity, 
             reservoir_buffer_capacity = FLAGS.reservoir_buffer_capacity, 
