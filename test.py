@@ -64,7 +64,13 @@ def eval_against_random_bots(env, trained_agents, random_agents, num_episodes):
 
 
 def main(_):
-  a = np.load('network_summary.npy', allow_pickle=True)
+  exploits = [1, 2, 3, 4, 5]
+  perm_idx = 70
+  #network_summaries[perm_idx] = exploits[-1]
+  filename = './checkpoints/' + str(perm_idx) + '.npy'
+  np.save(filename, exploits[-1])
+
+  a = np.load(filename, allow_pickle=True)
   print(a)
 
 
