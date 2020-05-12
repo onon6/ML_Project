@@ -64,85 +64,8 @@ def eval_against_random_bots(env, trained_agents, random_agents, num_episodes):
 
 
 def main(_):
-  game = "kuhn_poker"
-  num_players = 2
-
-  env_configs = {"players": num_players}
-  env = rl_environment.Environment(game, **env_configs)
-  info_state_size = env.observation_spec()["info_state"][0]
-  num_actions = env.action_spec()["num_actions"]
-
-  # Plotting
-  episodes = []
-  exploits = []
-  nashs = []
-
-  # random agents for evaluation
-  random_agents = [
-      random_agent.RandomAgent(player_id=idx, num_actions=num_actions)
-      for idx in range(num_players)
-  ]
-
-  with tf.Session() as sess:
-    hidden_layers_sizes = [int(l) for l in FLAGS.hidden_layers_sizes]
-    # pylint: disable=g-complex-comprehension
-    agents = [
-        dqn.DQN(
-            session=sess,
-            player_id=idx,
-            state_representation_size=info_state_size,
-            num_actions=num_actions,
-            hidden_layers_sizes=hidden_layers_sizes,
-            replay_buffer_capacity=FLAGS.replay_buffer_capacity,
-            batch_size=FLAGS.batch_size) for idx in range(num_players)
-    ]
-
-    
-    saver = tf.train.Saver()
-    sess.run(tf.global_variables_initializer())
-
-    expl_policies_avg = PolicyGradientPolicies(env, agents)
-
-    print("TEST", (agents[0].q_values))
-
-    for ep in range(FLAGS.num_train_episodes):
-      if (ep + 1) % FLAGS.eval_every == 0:
-        r_mean = eval_against_random_bots(env, agents, random_agents, 1000)
-        logging.info("[%s] Mean episode rewards %s", ep + 1, r_mean)
-        saver.save(sess, FLAGS.checkpoint_dir, ep)
-
-        # Shitty metric code
-        losses = [agent.loss for agent in agents]
-
-        # tabular_policy = policy.TabularPolicy(game)
-        # print("POL", tabular_policy)
-
-        expl = exploitability.exploitability(env.game, expl_policies_avg)
-        nash = exploitability.nash_conv(env.game, expl_policies_avg)
-        msg = "EP {}: EXPL: {}, NASH: {}, LOSS: {}\n".format(ep + 1, expl, nash, losses)
-        logging.info("%s", msg)
-
-        episodes.append(ep + 1)
-        exploits.append(expl)
-        nashs.append(nash)
-
-      time_step = env.reset()
-      while not time_step.last():
-        player_id = time_step.observations["current_player"]
-        if env.is_turn_based:
-          agent_output = agents[player_id].step(time_step)
-          action_list = [agent_output.action]
-        else:
-          agents_output = [agent.step(time_step) for agent in agents]
-          action_list = [agent_output.action for agent_output in agents_output]
-        time_step = env.step(action_list)
-
-      # Episode is over, step all agents with final info state.
-      for agent in agents:
-        agent.step(time_step)
-  
-  plot_exploitability(episodes, exploits)  
-  plot_nash_conv(episodes, nashs)
+  a = np.load('network_summary.npy', allow_pickle=True)
+  print(a)
 
 
 if __name__ == "__main__":
