@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 import sys
 import pyspiel
+import time
 
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
@@ -118,8 +119,6 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
       "epsilon_end": FLAGS.epsilon_end,
     } 
 
-
-
     with tf.Session() as sess:
         # pylint: disable=g-complex-comprehension
         agents = [
@@ -133,8 +132,15 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
         nashes = []
 
         sess.run(tf.global_variables_initializer())
+
+        start = time.time()
+
         for ep in range(num_episodes):
             if (ep + 1) % FLAGS.eval_every == 0:
+                end = time.time()
+                
+                print('ELPASED TIME', end - start)
+
                 losses = [agent.loss for agent in agents]
                 logging.info("Losses: %s", losses)
                 expl = exploitability.exploitability(env.game, expl_policies_avg)
@@ -177,7 +183,7 @@ def main(unused_argv):
 
     #### PAS ENKEL DEZE PARAMETERS AAN
     aantal_evals = 20
-    range_idx = danilo_range
+    range_idx = niels_range
     num_episodes = int(1e6) #FYI: default was 20e6
     ####
 
@@ -194,7 +200,6 @@ def main(unused_argv):
         filename = './checkpoints/' + str(perm_idx) + '.npy'
         np.save(filename, exploits[-1])
         ctr +=1
-
     network_summaries["all_perms"] = permutations
     np.save("network_summary.npy", network_summaries)
 
