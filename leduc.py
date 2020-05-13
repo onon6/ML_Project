@@ -6,12 +6,13 @@ import tensorflow.compat.v1 as tf
 import sys
 import pyspiel
 import time
+import os
 
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import exploitability
 from open_spiel.python.algorithms import nfsp
-#from tournament import policy_to_csv, tabular_policy_from_csv, play_match
+#from tournament import policy_to_csv
 import itertools 
 import random
 from math import floor
@@ -140,14 +141,13 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
                 end = time.time()
                 
                 print('ELPASED TIME', end - start)
-
                 losses = [agent.loss for agent in agents]
                 logging.info("Losses: %s", losses)
                 expl = exploitability.exploitability(env.game, expl_policies_avg)
                 nash = exploitability.nash_conv(env.game, expl_policies_avg)
                 logging.info("[%s] Exploitability AVG %s", ep + 1, expl)
                 logging.info("_____________________________________________")
-                episodes.append(ep)
+                episodes.append(ep+1)
                 exploits.append(expl)
                 nashes.append(nash)
 
@@ -163,10 +163,11 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
                 agent.step(time_step)
 
 
-    return (episodes, exploits, nashes)
+    return (episodes, exploits, nashes, expl_policies_avg)
     
 
-def main(unused_argv):
+
+def random_search():
     HLAY_SIZES = [8,16,32,64,128]
     REPBUFCAP  = [100000, 200000, 300000]
     RESBUFCAP  = [1000000, 2000000, 3000000]
@@ -195,15 +196,52 @@ def main(unused_argv):
         logging.info("Starting episode {}/{}".format(ctr, aantal_evals))
         logging.info("==================================================")
         hp = permutations[perm_idx]
-        episodes, exploits, nashes = train_network(num_episodes, hp[0], hp[1], hp[2], hp[3], hp[4])
+        episodes, exploits, nashes, z = train_network(num_episodes, hp[0], hp[1], hp[2], hp[3], hp[4])
         network_summaries[perm_idx] = exploits[-1]
         filename = './checkpoints/' + str(perm_idx) + '.npy'
         np.save(filename, exploits[-1])
         ctr +=1
     network_summaries["all_perms"] = permutations
     np.save("network_summary.npy", network_summaries)
-
     
+
+def find_best_network():
+    HLAY_SIZES = [8,16,32,64,128]
+    REPBUFCAP  = [100000, 200000, 300000]
+    RESBUFCAP  = [1000000, 2000000, 3000000]
+    ANTPARAM   = [0.01, 0.05, 0.1]
+    ESTART     = [0.1, 0.06, 0.03]
+    allparams  = [HLAY_SIZES] + [REPBUFCAP] + [RESBUFCAP] + [ANTPARAM] + [ESTART]
+    len_perms = len(HLAY_SIZES) * len(REPBUFCAP) * len(RESBUFCAP) * len(ANTPARAM) * len(ESTART)
+    permutations = list(itertools.product(*allparams)) 
+
+    directory = os.fsencode('./checkpoints')
+
+    min_expl = float('inf')
+    min_file = None
+    for file in os.listdir(directory):
+        filename = os.fsdecode(file)
+        expl = np.load('./checkpoints/' + filename)        
+        if expl < min_expl:
+            min_file = filename
+            min_expl = expl
+    logging.info("Filename {} contained lowest exploitability of {}".format(min_file, str(min_expl)))   
+    splitted = min_file.split('.')
+    idx = splitted[0]
+    hp_optim = permutations[int(idx)]
+    return hp_optim
+
+def main(unused_argv):
+    hp = find_best_network()
+    episodes, exploits, nashes, policy = train_network(20000, hp[0], hp[1], hp[2], hp[3], hp[4])
+    d = dict()
+    d["episodes"] = episodes
+    d["exploits"] = exploits
+    d["nashes"]   = nashes
+    #policy_to_csv(pyspiel.load_game("leduc_poker"), policy, './best_network_policy')
+    np.save("best_network.npy", d)
+
+
 
 if __name__ == "__main__":
   app.run(main)

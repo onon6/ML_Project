@@ -67,8 +67,8 @@ def main(_):
   exploits = [1, 2, 3, 4, 5]
   perm_idx = 70
   #network_summaries[perm_idx] = exploits[-1]
-  filename = './checkpoints/' + str(perm_idx) + '.npy'
-  np.save(filename, exploits[-1])
+  filename = 'best_network' + '.npy'
+  #np.save(filename, exploits[-1])
 
   a = np.load(filename, allow_pickle=True)
   print(a)
