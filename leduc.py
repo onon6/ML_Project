@@ -12,7 +12,7 @@ from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import exploitability
 from open_spiel.python.algorithms import nfsp
-#from tournament import policy_to_csv
+from tournament import policy_to_csv
 import itertools 
 import random
 from math import floor
@@ -162,11 +162,10 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
             for agent in agents:
                 agent.step(time_step)
 
-        policy_to_csv(pyspiel.load_game("leduc_poker"), expl_policies_avg, './best_network_policy')
+        policy_to_csv(pyspiel.load_game("leduc_poker"), expl_policies_avg, './best_network_policy.csv')
 
     return (episodes, exploits, nashes)
     
-
 
 def random_search():
     HLAY_SIZES = [8,16,32,64,128]
@@ -231,6 +230,7 @@ def find_best_network():
     idx = splitted[0]
     hp_optim = permutations[int(idx)]
     return hp_optim
+
 
 def main(unused_argv):
     hp = find_best_network()
