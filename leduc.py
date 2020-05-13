@@ -5,6 +5,7 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 import sys
 import pyspiel
+import time
 
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
@@ -118,8 +119,6 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
       "epsilon_end": FLAGS.epsilon_end,
     } 
 
-
-
     with tf.Session() as sess:
         # pylint: disable=g-complex-comprehension
         agents = [
@@ -133,8 +132,15 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
         nashes = []
 
         sess.run(tf.global_variables_initializer())
+
+        start = time.time()
+
         for ep in range(num_episodes):
             if (ep + 1) % FLAGS.eval_every == 0:
+                end = time.time()
+                
+                print('ELPASED TIME', end - start)
+
                 losses = [agent.loss for agent in agents]
                 logging.info("Losses: %s", losses)
                 expl = exploitability.exploitability(env.game, expl_policies_avg)
@@ -162,10 +168,10 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
 
 def main(unused_argv):
     HLAY_SIZES = [8,16,32,64,128]
-    REPBUFCAP  = [10000, 50000, 100000, 200000, 400000]
-    RESBUFCAP  = [10000, 50000, 100000, 200000, 400000]
-    ANTPARAM   = [0.01, 0.02, 0.05, 0.1, 0.2]
-    ESTART     = [0.2, 0.1, 0.07, 0.05, 0.03]
+    REPBUFCAP  = [100000, 200000, 300000]
+    RESBUFCAP  = [1000000, 2000000, 3000000]
+    ANTPARAM   = [0.01, 0.05, 0.1]
+    ESTART     = [0.1, 0.06, 0.03]
     allparams  = [HLAY_SIZES] + [REPBUFCAP] + [RESBUFCAP] + [ANTPARAM] + [ESTART]
     len_perms = len(HLAY_SIZES) * len(REPBUFCAP) * len(RESBUFCAP) * len(ANTPARAM) * len(ESTART)
     permutations = list(itertools.product(*allparams)) 
@@ -176,17 +182,24 @@ def main(unused_argv):
     niels_range = range(pipeline_idx, len_perms)
 
     #### PAS ENKEL DEZE PARAMETERS AAN
-    aantal_evals = 3
-    range_idx = danilo_range
-    num_episodes = int(20000) #FYI: default was 20e6
+    aantal_evals = 20
+    range_idx = niels_range
+    num_episodes = int(1e6) #FYI: default was 20e6
     ####
 
     perm_idxs = random.sample(range_idx, aantal_evals)
     network_summaries = dict()
+    ctr = 1
     for perm_idx in perm_idxs:
+        logging.info("==================================================")
+        logging.info("Starting episode {}/{}".format(ctr, aantal_evals))
+        logging.info("==================================================")
         hp = permutations[perm_idx]
         episodes, exploits, nashes = train_network(num_episodes, hp[0], hp[1], hp[2], hp[3], hp[4])
         network_summaries[perm_idx] = exploits[-1]
+        filename = './checkpoints/' + str(perm_idx) + '.npy'
+        np.save(filename, exploits[-1])
+        ctr +=1
     network_summaries["all_perms"] = permutations
     np.save("network_summary.npy", network_summaries)
 
