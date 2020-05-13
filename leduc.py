@@ -162,8 +162,9 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
             for agent in agents:
                 agent.step(time_step)
 
+        policy_to_csv(pyspiel.load_game("leduc_poker"), expl_policies_avg, './best_network_policy')
 
-    return (episodes, exploits, nashes, expl_policies_avg)
+    return (episodes, exploits, nashes)
     
 
 
@@ -196,7 +197,7 @@ def random_search():
         logging.info("Starting episode {}/{}".format(ctr, aantal_evals))
         logging.info("==================================================")
         hp = permutations[perm_idx]
-        episodes, exploits, nashes, z = train_network(num_episodes, hp[0], hp[1], hp[2], hp[3], hp[4])
+        episodes, exploits, nashes = train_network(num_episodes, hp[0], hp[1], hp[2], hp[3], hp[4])
         network_summaries[perm_idx] = exploits[-1]
         filename = './checkpoints/' + str(perm_idx) + '.npy'
         np.save(filename, exploits[-1])
@@ -233,15 +234,12 @@ def find_best_network():
 
 def main(unused_argv):
     hp = find_best_network()
-    episodes, exploits, nashes, policy = train_network(20000, hp[0], hp[1], hp[2], hp[3], hp[4])
+    episodes, exploits, nashes = train_network(20000, hp[0], hp[1], hp[2], hp[3], hp[4])
     d = dict()
     d["episodes"] = episodes
     d["exploits"] = exploits
     d["nashes"]   = nashes
-    #policy_to_csv(pyspiel.load_game("leduc_poker"), policy, './best_network_policy')
     np.save("best_network.npy", d)
-
-
 
 if __name__ == "__main__":
   app.run(main)
