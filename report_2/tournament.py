@@ -19,23 +19,24 @@ def tabular_policy_from_csv(game, filename):
     empty_tabular_policy = TabularPolicy(game)
     for state_index, state in enumerate(empty_tabular_policy.states):
         action_probabilities = {
-                action: probability
-                for action, probability in enumerate(csv.loc[state.history_str()])
-                if probability > 0
-            }
+            action: probability
+            for action, probability in enumerate(csv.loc[state.history_str()])
+            if probability > 0
+        }
         infostate_policy = [
-            action_probabilities.get(action, 0.)
+            action_probabilities.get(action, 0.0)
             for action in range(game.num_distinct_actions())
         ]
-        empty_tabular_policy.action_probability_array[
-            state_index, :] = infostate_policy
+        empty_tabular_policy.action_probability_array[state_index, :] = infostate_policy
     return empty_tabular_policy
+
 
 def policy_to_csv(game, policy, filename):
     tabular_policy = tabular_policy_from_policy(game, policy)
     df = pd.DataFrame(
-            data=tabular_policy.action_probability_array,
-            index=[s.history_str() for s in tabular_policy.states])
+        data=tabular_policy.action_probability_array,
+        index=[s.history_str() for s in tabular_policy.states],
+    )
     df.to_csv(filename)
 
 
@@ -44,7 +45,7 @@ def play_match(game, csv_policy_home, csv_policy_away):
 
     agents = [
         tabular_policy_from_csv(game, csv_policy_home),
-        tabular_policy_from_csv(game, csv_policy_away)
+        tabular_policy_from_csv(game, csv_policy_away),
     ]
 
     env_configs = {"players": 2}
@@ -60,7 +61,9 @@ def play_match(game, csv_policy_home, csv_policy_away):
         cur_legal_actions = state.legal_actions(player_id)
         # Remove illegal actions, re-normalize probs
         probs = np.zeros(num_actions)
-        policy_probs = agents[player_id].action_probabilities(state, player_id=player_id)
+        policy_probs = agents[player_id].action_probabilities(
+            state, player_id=player_id
+        )
         for action in cur_legal_actions:
             probs[action] = policy_probs[action]
         probs /= sum(probs)
@@ -68,7 +71,7 @@ def play_match(game, csv_policy_home, csv_policy_away):
         return action
 
     while not state.is_terminal():
-         # The state can be three different types: chance node,
+        # The state can be three different types: chance node,
         # simultaneous node, or decision node
         if state.is_chance_node():
             # Chance node: sample an outcome
@@ -77,28 +80,36 @@ def play_match(game, csv_policy_home, csv_policy_away):
             print("Chance node, got " + str(num_actions) + " outcomes")
             action_list, prob_list = zip(*outcomes)
             action = np.random.choice(action_list, p=prob_list)
-            print("Sampled outcome: ",
-                  state.action_to_string(state.current_player(), action))
+            print(
+                "Sampled outcome: ",
+                state.action_to_string(state.current_player(), action),
+            )
             state.apply_action(action)
 
         elif state.is_simultaneous_node():
             # Simultaneous node: sample actions for all players.
             chosen_actions = [
-                sample_action(state, pid)
-                for pid in xrange(game.num_players())
-                ]
-            print("Chosen actions: ", [
-              state.action_to_string(pid, action)
-              for pid, action in enumerate(chosen_actions)
-              ])
+                sample_action(state, pid) for pid in xrange(game.num_players())
+            ]
+            print(
+                "Chosen actions: ",
+                [
+                    state.action_to_string(pid, action)
+                    for pid, action in enumerate(chosen_actions)
+                ],
+            )
             state.apply_actions(chosen_actions)
 
         else:
             # Decision node: sample action for the single current player
             action = sample_action(state, state.current_player())
             action_string = state.action_to_string(state.current_player(), action)
-            print("Player ", state.current_player(), ", randomly sampled action: ",
-                  action_string)
+            print(
+                "Player ",
+                state.current_player(),
+                ", randomly sampled action: ",
+                action_string,
+            )
             state.apply_action(action)
 
         print("New state: ", str(state))
@@ -106,27 +117,36 @@ def play_match(game, csv_policy_home, csv_policy_away):
     # Game is now done. Print utilities for each player
     returns = state.returns()
     for pid in range(game.num_players()):
-      print("Utility for player {} is {}".format(pid, returns[pid]))
+        print("Utility for player {} is {}".format(pid, returns[pid]))
     return returns
 
 
 def play_tournament(game, modeldir, rounds=100):
     results = []
-    teams = set([
+    teams = set(
+        [
             re.search(r"(.+)_p\d\.csv", os.path.basename(f)).group(1)
-            for f in glob.glob(modeldir + "/*.csv", recursive=True)])
+            for f in glob.glob(modeldir + "/*.csv", recursive=True)
+        ]
+    )
     ranking = {}
     for team in teams:
         ranking[team] = 0
     for i in range(rounds):
         for (team1, team2) in list(itertools.combinations(teams, 2)):
-            result = play_match(game, os.path.join(modeldir, f"{team1}_p1.csv"), os.path.join(modeldir, f"{team2}_p2.csv"))
-            results.append({
-                "team1": team1,
-                "team2": team2,
-                "score1": result[0],
-                "score2": result[1]
-                })
+            result = play_match(
+                game,
+                os.path.join(modeldir, f"{team1}_p1.csv"),
+                os.path.join(modeldir, f"{team2}_p2.csv"),
+            )
+            results.append(
+                {
+                    "team1": team1,
+                    "team2": team2,
+                    "score1": result[0],
+                    "score2": result[1],
+                }
+            )
             if result[0] > result[1]:
                 ranking[team1] += 3
             elif result[0] == result[1]:
@@ -134,13 +154,19 @@ def play_tournament(game, modeldir, rounds=100):
                 ranking[team2] += 1
             else:
                 ranking[team2] += 3
-            result = play_match(game, os.path.join(modeldir, f"{team2}_p1.csv"), os.path.join(modeldir, f"{team1}_p2.csv"))
-            results.append({
-                "team1": team2,
-                "team2": team1,
-                "score1": result[0],
-                "score2": result[1]
-                })
+            result = play_match(
+                game,
+                os.path.join(modeldir, f"{team2}_p1.csv"),
+                os.path.join(modeldir, f"{team1}_p2.csv"),
+            )
+            results.append(
+                {
+                    "team1": team2,
+                    "team2": team1,
+                    "score1": result[0],
+                    "score2": result[1],
+                }
+            )
             if result[0] > result[1]:
                 ranking[team2] += 3
             elif result[0] == result[1]:
@@ -152,16 +178,17 @@ def play_tournament(game, modeldir, rounds=100):
 
 
 @click.command()
-@click.argument('game', type=str)
-@click.argument('modeldir', type=click.Path(exists=True))
-@click.argument('outputdir', type=click.Path(exists=True))
-@click.option('--rounds', default=20, help='Number of rounds to play.')
+@click.argument("game", type=str)
+@click.argument("modeldir", type=click.Path(exists=True))
+@click.argument("outputdir", type=click.Path(exists=True))
+@click.option("--rounds", default=20, help="Number of rounds to play.")
 def cli(game, modeldir, outputdir, rounds):
     """Play a round robin tournament"""
     game = pyspiel.load_game(game)
     ranking, results = play_tournament(game, modeldir, rounds)
-    pd.DataFrame(ranking, index=[0]).to_csv(os.path.join(outputdir, 'ranking.csv'))
-    pd.DataFrame(results).to_csv(os.path.join(outputdir, 'results.csv'))
+    pd.DataFrame(ranking, index=[0]).to_csv(os.path.join(outputdir, "ranking.csv"))
+    pd.DataFrame(results).to_csv(os.path.join(outputdir, "results.csv"))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     cli()
