@@ -134,19 +134,14 @@ def train_network(num_episodes, hidden_layers_sizes, replay_buffer_capacity, res
 
         sess.run(tf.global_variables_initializer())
 
-        start = time.time()
-
         for ep in range(num_episodes):
             if (ep + 1) % FLAGS.eval_every == 0:
-                end = time.time()
-                
-                print('ELPASED TIME', end - start)
                 losses = [agent.loss for agent in agents]
-                logging.info("Losses: %s", losses)
+                # logging.info("Losses: %s", losses)
                 expl = exploitability.exploitability(env.game, expl_policies_avg)
                 nash = exploitability.nash_conv(env.game, expl_policies_avg)
-                logging.info("[%s] Exploitability AVG %s", ep + 1, expl)
-                logging.info("_____________________________________________")
+                logging.info("[%s/%s] AVG Exploitability %s", ep + 1, num_episodes, expl)
+                
                 episodes.append(ep+1)
                 exploits.append(expl)
                 nashes.append(nash)
@@ -234,7 +229,7 @@ def find_best_network():
 
 def main(unused_argv):
     hp = find_best_network()
-    episodes, exploits, nashes = train_network(20000, hp[0], hp[1], hp[2], hp[3], hp[4])
+    episodes, exploits, nashes = train_network(int(20e6), hp[0], hp[1], hp[2], hp[3], hp[4])
     d = dict()
     d["episodes"] = episodes
     d["exploits"] = exploits
