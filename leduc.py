@@ -8,11 +8,16 @@ import pyspiel
 import time
 import os
 
+import matplotlib.pyplot as plt
+from open_spiel.python.algorithms import tabular_qlearner
 from open_spiel.python import policy
 from open_spiel.python import rl_environment
 from open_spiel.python.algorithms import exploitability
 from open_spiel.python.algorithms import nfsp
-from tournament import policy_to_csv
+from open_spiel.python.policy import TabularPolicy
+from open_spiel.python.algorithms import expected_game_score
+import pandas as pd
+#from tournament import policy_to_csv
 import itertools 
 import random
 from math import floor
@@ -226,8 +231,7 @@ def find_best_network():
     hp_optim = permutations[int(idx)]
     return hp_optim
 
-
-def main(unused_argv):
+def save_best_network():
     hp = find_best_network()
     episodes, exploits, nashes = train_network(int(20e6), hp[0], hp[1], hp[2], hp[3], hp[4])
     d = dict()
@@ -235,6 +239,61 @@ def main(unused_argv):
     d["exploits"] = exploits
     d["nashes"]   = nashes
     np.save("best_network.npy", d)
+
+def plot_best_network():
+    d = np.load('./best_network.npy', allow_pickle=True).item()
+    episodes = d["episodes"]
+    exploits = d["exploits"]
+    nashes   = d["nashes"]
+    print(exploits[-1])
+
+    plt.figure()
+    plt.plot(episodes, exploits, '-r', label='Exploitability')
+    plt.xlabel('Episode')
+    plt.ylabel('Exploitability')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(FLAGS.eval_every, FLAGS.num_train_episodes)
+    plt.legend(loc='upper right')
+    plt.show()
+    plt.savefig('nfsp_exploits.png')
+
+    plt.figure()
+    plt.plot(episodes, nashes, '-r', label='NashConv')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(FLAGS.eval_every, FLAGS.num_train_episodes)
+    plt.legend(loc='upper right')
+    plt.show()
+    plt.savefig('nfsp_nash.png')
+
+def print_average_payouts():
+    game = pyspiel.load_game('leduc_poker')
+    average_policy = __tabular_policy_from_csv(game, './best_network_policy.csv')
+    average_policy_values = expected_game_score.policy_value(game.new_initial_state(), [average_policy] * 2)
+    print(average_policy_values)
+
+
+def __tabular_policy_from_csv(game, filename):
+    csv = pd.read_csv(filename, index_col=0)
+
+    empty_tabular_policy = TabularPolicy(game)
+    for state_index, state in enumerate(empty_tabular_policy.states):
+        action_probabilities = {
+                action: probability
+                for action, probability in enumerate(csv.loc[state.history_str()])
+                if probability > 0
+            }
+        infostate_policy = [
+            action_probabilities.get(action, 0.)
+            for action in range(game.num_distinct_actions())
+        ]
+        empty_tabular_policy.action_probability_array[
+            state_index, :] = infostate_policy
+    return empty_tabular_policy
+
+def main(unused_argv):
+    print_average_payouts()
 
 if __name__ == "__main__":
   app.run(main)
